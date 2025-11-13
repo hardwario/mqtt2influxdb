@@ -37,6 +37,8 @@ def main():
             disable_warnings()
 
         if args.test:
+            if args.debug:
+                print(config)
             print("The configuration file seems ok")
             return
 
