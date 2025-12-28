@@ -35,8 +35,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/hardwario/bch-mqtt2influxdb"
-Repository = "https://github.com/hardwario/bch-mqtt2influxdb"
+Homepage = "https://github.com/hardwario/mqtt2influxdb"
+Repository = "https://github.com/hardwario/mqtt2influxdb"
 
 [project.scripts]
 mqtt2influxdb = "mqtt2influxdb.cli:main"

@@ -1,10 +1,10 @@
 # mqtt2influxdb
 
 [![PyPI](https://img.shields.io/pypi/v/mqtt2influxdb.svg)](https://pypi.org/project/mqtt2influxdb/)
-[![GitHub Actions](https://img.shields.io/github/actions/workflow/status/hardwario/bch-mqtt2influxdb/publish.yml)](https://github.com/hardwario/bch-mqtt2influxdb/actions)
-[![GitHub Actions](https://img.shields.io/github/actions/workflow/status/hardwario/bch-mqtt2influxdb/test.yml)](https://github.com/hardwario/bch-mqtt2influxdb/actions)
-[![GitHub Release](https://img.shields.io/github/v/release/hardwario/bch-mqtt2influxdb?sort=semver)](https://github.com/hardwario/bch-mqtt2influxdb/releases)
-[![GitHub License](https://img.shields.io/github/license/hardwario/bch-mqtt2influxdb)](https://github.com/hardwario/bch-mqtt2influxdb/blob/main/LICENSE)
+[![GitHub Actions](https://img.shields.io/github/actions/workflow/status/hardwario/mqtt2influxdb/publish.yml)](https://github.com/hardwario/mqtt2influxdb/actions)
+[![GitHub Actions](https://img.shields.io/github/actions/workflow/status/hardwario/mqtt2influxdb/test.yml)](https://github.com/hardwario/mqtt2influxdb/actions)
+[![GitHub Release](https://img.shields.io/github/v/release/hardwario/mqtt2influxdb?sort=semver)](https://github.com/hardwario/mqtt2influxdb/releases)
+[![GitHub License](https://img.shields.io/github/license/hardwario/mqtt2influxdb)](https://github.com/hardwario/mqtt2influxdb/blob/main/LICENSE)
 
 A Python bridge between MQTT messaging and InfluxDB v3 time-series database. Subscribe to MQTT topics, process incoming messages, and write data points to InfluxDB.
 
@@ -171,8 +171,8 @@ base64decode:
 ## Development
 
 ```bash
-git clone https://github.com/hardwario/bch-mqtt2influxdb.git
-cd bch-mqtt2influxdb
+git clone https://github.com/hardwario/mqtt2influxdb.git
+cd mqtt2influxdb
 uv sync
 uv run mqtt2influxdb -c config-tower.yml --debug
 ```
