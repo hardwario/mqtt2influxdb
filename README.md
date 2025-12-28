@@ -1,12 +1,14 @@
-<a href="https://www.hardwario.com/"><img src="https://www.hardwario.com/ci/assets/hw-logo.svg" width="200" alt="HARDWARIO Logo" align="right"></a>
-
 # mqtt2influxdb
+
+[![PyPI](https://img.shields.io/pypi/v/mqtt2influxdb.svg)](https://pypi.org/project/mqtt2influxdb/)
+[![GitHub Actions](https://img.shields.io/github/actions/workflow/status/hardwario/bch-mqtt2influxdb/publish.yml)](https://github.com/hardwario/bch-mqtt2influxdb/actions)
+[![GitHub Actions](https://img.shields.io/github/actions/workflow/status/hardwario/bch-mqtt2influxdb/test.yml)](https://github.com/hardwario/bch-mqtt2influxdb/actions)
+[![GitHub Release](https://img.shields.io/github/v/release/hardwario/bch-mqtt2influxdb?sort=semver)](https://github.com/hardwario/bch-mqtt2influxdb/releases)
+[![GitHub License](https://img.shields.io/github/license/hardwario/bch-mqtt2influxdb)](https://github.com/hardwario/bch-mqtt2influxdb/blob/main/LICENSE)
 
 A Python bridge between MQTT messaging and InfluxDB v3 time-series database. Subscribe to MQTT topics, process incoming messages, and write data points to InfluxDB.
 
-[![Release](https://img.shields.io/github/release/hardwario/bch-mqtt2influxdb.svg)](https://github.com/hardwario/bch-mqtt2influxdb/releases)
-[![PyPI](https://img.shields.io/pypi/v/mqtt2influxdb.svg)](https://pypi.org/project/mqtt2influxdb/)
-[![License](https://img.shields.io/github/license/hardwario/bch-mqtt2influxdb.svg)](https://github.com/hardwario/bch-mqtt2influxdb/blob/main/LICENSE)
+---
 
 ## Features
 
@@ -19,11 +21,15 @@ A Python bridge between MQTT messaging and InfluxDB v3 time-series database. Sub
 - Base64 decoding support
 - Daemon mode with automatic reconnection
 
+---
+
 ## Requirements
 
 - Python 3.10+
 - InfluxDB v3 instance (Cloud or self-hosted)
 - MQTT broker (Mosquitto, etc.)
+
+---
 
 ## Installation
 
@@ -38,6 +44,8 @@ Using pip:
 ```bash
 pip install mqtt2influxdb
 ```
+
+---
 
 ## Quick Start
 
@@ -69,6 +77,8 @@ points:
 mqtt2influxdb -c config.yml
 ```
 
+---
+
 ## CLI Usage
 
 ```
@@ -83,6 +93,8 @@ Options:
   --version          Show version
   --help             Show this message and exit
 ```
+
+---
 
 ## Configuration Reference
 
@@ -154,6 +166,8 @@ base64decode:
   target: data
 ```
 
+---
+
 ## Development
 
 ```bash
@@ -163,10 +177,12 @@ uv sync
 uv run mqtt2influxdb -c config-tower.yml --debug
 ```
 
+---
+
 ## License
 
-This project is licensed under the [MIT License](https://opensource.org/licenses/MIT/) - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-Made with &#x2764;&nbsp; by [**HARDWARIO a.s.**](https://www.hardwario.com/) in the heart of Europe.
+Made with ❤ by [**HARDWARIO a.s.**](https://www.hardwario.com/) in the heart of Europe.
