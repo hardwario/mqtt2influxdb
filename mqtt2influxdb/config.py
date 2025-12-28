@@ -1,132 +1,176 @@
-import os
-import sys
+"""Configuration models for mqtt2influxdb using Pydantic."""
+
 import logging
-import yaml
 import re
+from pathlib import Path
+from typing import Any
+
 import jsonpath_ng
-from io import IOBase
-from schema import Schema, And, Or, Use, Optional, SchemaError
+import yaml
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
 from .expr import parse_expression
+
+# Regex for schedule config entries
+CRONTAB_REGEX = re.compile(
+    r"(?P<minute>\*|[0-5]?\d|\*/\d+|\d+-\d+|\d+(,\d+)*)\s+"
+    r"(?P<hour>\*|[01]?\d|2[0-3]|\*/\d+|\d+-\d+|\d+(,\d+)*)\s+"
+    r"(?P<day>\*|0?[1-9]|[12]\d|3[01]|\*/\d+|\d+-\d+|\d+(,\d+)*)\s+"
+    r"(?P<month>\*|0?[1-9]|1[012]|\*/\d+|\d+-\d+|\d+(,\d+)*)\s+"
+    r"(?P<day_of_week>\*|[0-6](-[0-6])?|\*/\d+|\d+(,\d+)*)"
+)
 
 
 class ConfigError(Exception):
+    """Configuration validation error."""
+
     pass
 
 
-# Regex for schedule config entries
-validate_crontab_time_format_regex = re.compile(
-    r"{0}\s+{1}\s+{2}\s+{3}\s+{4}".format(
-        r"(?P<minute>\*|[0-5]?\d)",
-        r"(?P<hour>\*|[01]?\d|2[0-3])",
-        r"(?P<day>\*|0?[1-9]|[12]\d|3[01])",
-        r"(?P<month>\*|0?[1-9]|1[012])",
-        r"(?P<day_of_week>\*|[0-6](\-[0-6])?)"
-    )  # end of str.format()
-)  # end of re.compile()
+class MqttConfig(BaseModel):
+    """MQTT broker configuration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    host: str = Field(..., min_length=1)
+    port: int = Field(..., ge=0, le=65535)
+    username: str | None = Field(default=None, min_length=1)
+    password: str | None = Field(default=None, min_length=1)
+    cafile: Path | None = None
+    certfile: Path | None = None
+    keyfile: Path | None = None
+
+    @field_validator("cafile", "certfile", "keyfile", mode="after")
+    @classmethod
+    def validate_file_exists(cls, v: Path | None) -> Path | None:
+        if v is not None and not v.exists():
+            raise ValueError(f"File not found: {v}")
+        return v
 
 
-def json_path(txt):
-    try:
-        logging.debug("validating as json path - '%s'" % txt)
-        return jsonpath_ng.parse(txt)
-    except Exception as e:
-        logging.error("Bad JsonPath format: '%s'" % txt)
-        raise SchemaError(['Bad JsonPath format: %s' % txt], str(e))
+class InfluxDBConfig(BaseModel):
+    """InfluxDB v3 configuration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    host: str = Field(..., min_length=1, description="InfluxDB host URL")
+    token: str = Field(..., min_length=1, description="API token")
+    org: str = Field(..., min_length=1, description="Organization name")
+    bucket: str = Field(..., min_length=1, description="Default bucket name")
+    enable_gzip: bool = Field(default=False, description="Enable gzip compression")
 
 
-def str_or_jsonPath(txt):
-    if "$." in txt:
-        return json_path(txt)
-    logging.debug("validating as string - '%s'" % txt)
-    return txt
+class HttpConfig(BaseModel):
+    """HTTP forwarding configuration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    destination: str = Field(..., min_length=1)
+    action: str = Field(..., min_length=1)
+    username: str | None = Field(default=None, min_length=1)
+    password: str | None = Field(default=None, min_length=1)
 
 
-def str_or_jsonPath_or_expr(txt):
-    if '=' in txt:
-        logging.debug("validating as expression - '%s'" % txt)
-        return parse_expression(txt)
-    return str_or_jsonPath(txt)
+class Base64DecodeConfig(BaseModel):
+    """Base64 decode configuration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    source: str = Field(..., min_length=1)
+    target: str = Field(..., min_length=1)
 
 
-def valid_pycron_expr(txt):
-    logging.debug("validating as crontab entry - '%s'" % txt)
-    if validate_crontab_time_format_regex.match(txt):
-        return True
-    raise SchemaError('Bad crontab format: %s' % txt)
+class FieldConfig(BaseModel):
+    """Field with optional type conversion."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    value: str = Field(..., min_length=1)
+    type: str | None = Field(default=None, min_length=1)
 
 
-def port_range(port):
-    return 0 <= port <= 65535
+class PointConfig(BaseModel):
+    """Measurement point configuration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    measurement: str = Field(..., min_length=1)
+    topic: str = Field(..., min_length=1)
+    bucket: str | None = Field(default=None, min_length=1)
+    schedule: str | None = Field(default=None, min_length=1)
+    fields: dict[str, str | FieldConfig] = Field(default_factory=dict)
+    tags: dict[str, str] = Field(default_factory=dict)
+    httpcontent: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("schedule", mode="after")
+    @classmethod
+    def validate_schedule(cls, v: str | None) -> str | None:
+        if v is not None:
+            if not CRONTAB_REGEX.match(v):
+                raise ValueError(f"Invalid cron format: {v}")
+            logging.debug("Validated crontab entry: '%s'", v)
+        return v
+
+    @field_validator("measurement", mode="after")
+    @classmethod
+    def validate_measurement(cls, v: str) -> str:
+        if "$." in v:
+            try:
+                jsonpath_ng.parse(v)
+                logging.debug("Validated measurement as JSONPath: '%s'", v)
+            except Exception as e:
+                raise ValueError(f"Invalid JSONPath in measurement: {v}") from e
+        return v
 
 
-schema = Schema({
-    'mqtt': {
-        'host': And(str, len),
-        'port': And(int, port_range),
-        Optional('username'): And(str, len),
-        Optional('password'): And(str, len),
-        Optional('cafile'): os.path.exists,
-        Optional('certfile'): os.path.exists,
-        Optional('keyfile'): os.path.exists,
-    },
-    Optional('http'): {
-        'destination': And(str, len),
-        'action': And(str, len),
-        Optional('username'): And(str, len),
-        Optional('password'): And(str, len)
-    },
+class Config(BaseModel):
+    """Root configuration model."""
 
-    'influxdb': {
-        'host': And(str, len),
-        'port': And(int, port_range),
-        Optional('username'): And(str, len),
-        Optional('password'): And(str, len),
-        'database': And(str, len),
-        Optional('ssl'): bool,
-        Optional('verify_ssl'): bool,
-        Optional('pool_size'): int,
-        Optional('timeout'): int,
-        Optional('retries'): int,
-        Optional('use_udp'): bool,
-        Optional('udp_port'): And(int, port_range),
-        Optional('proxies'): {
-            Optional('http'): And(str, len),
-            Optional('https'): And(str, len)
-        },
-        Optional('path'): And(str, len),
-        Optional('cert'): And(str, len),
-        Optional('gzip'): bool
-    },
-    Optional("base64decode"): {
-        'source': And(str, len, Use(str_or_jsonPath)),
-        'target': And(str, len)
-    },
-    'points': [{
-        'measurement': And(str, len, Use(str_or_jsonPath)),
-        'topic': And(str, len),
-        Optional('schedule'): And(str, len, valid_pycron_expr),
-        Optional('httpcontent'): {str: And(str, len, Use(str_or_jsonPath))},
-        Optional('fields'): Or(
-            {str: Or(And(str, len, Use(str_or_jsonPath_or_expr)),
-                     {'value': And(str, len, Use(str_or_jsonPath_or_expr)), 'type': And(str, len)})},
-            And(str, len, Use(str_or_jsonPath_or_expr))
-        ),
-        Optional('tags'): {str: And(str, len, Use(str_or_jsonPath))},
-        Optional('database'): And(str, len)
-    }]
-})
+    model_config = ConfigDict(extra="forbid")
+
+    mqtt: MqttConfig
+    influxdb: InfluxDBConfig
+    http: HttpConfig | None = None
+    base64decode: Base64DecodeConfig | None = None
+    points: list[PointConfig] = Field(..., min_length=1)
 
 
-def load_config(config_file):
-    if isinstance(config_file, IOBase):
-        config = yaml.safe_load(config_file)
+def validate_jsonpath(value: str) -> jsonpath_ng.JSONPath | str:
+    """Parse and validate a JSONPath expression, or return string as-is."""
+    if "$." in value:
         try:
-            config = schema.validate(config)
-        except SchemaError as e:
-            raise ConfigError(str(e))
-    elif config_file is None:
-        config = {}
-    else:
-        raise ConfigError('Unknown type config_file')
+            logging.debug("Validating as JSONPath: '%s'", value)
+            return jsonpath_ng.parse(value)
+        except Exception as e:
+            raise ValueError(f"Invalid JSONPath: {value}") from e
+    logging.debug("Validated as string: '%s'", value)
+    return value
 
-    return config
+
+def validate_value_spec(value: str) -> Any:
+    """Validate a value specification (string, JSONPath, or expression)."""
+    if "=" in value:
+        logging.debug("Validating as expression: '%s'", value)
+        return parse_expression(value)
+    return validate_jsonpath(value)
+
+
+def load_config(config_file) -> Config:
+    """Load and validate configuration from YAML file.
+
+    Args:
+        config_file: File-like object containing YAML configuration.
+
+    Returns:
+        Validated Config object.
+
+    Raises:
+        ConfigError: If configuration is invalid.
+    """
+    try:
+        data = yaml.safe_load(config_file)
+        if data is None:
+            raise ConfigError("Empty configuration file")
+        return Config.model_validate(data)
+    except Exception as e:
+        raise ConfigError(str(e)) from e
