@@ -1,8 +1,0 @@
-PyYAML>=5.1.1
-paho-mqtt>=1.0
-influxdb
-schema>=0.6.7
-jsonpath-ng>=1.4.3
-pycron>=3.0.0
-py_expression_eval>=0.3.9
-requests
