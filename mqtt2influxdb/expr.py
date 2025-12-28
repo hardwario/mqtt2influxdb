@@ -1,24 +1,54 @@
+"""Expression parsing utilities for mqtt2influxdb."""
+
 import py_expression_eval
-from schema import SchemaError
 
 
-def jsonpath_to_variable(p):
-    """Converts a JSON path starting with $. into a valid expression variable"""
-    # replace $ with JSON_ and . with _
-    return p.replace('$', 'JSON_').replace('.', '_')
+class ExpressionError(ValueError):
+    """Error parsing mathematical expression."""
+
+    pass
 
 
-def variable_to_jsonpath(p):
-    """Converts a expression variable into a valid JSON path starting with $."""
-    # replace JSON_ with $ and _ with .
-    return p.var.replace('JSON_', '$').replace('_', '.')
+def jsonpath_to_variable(path: str) -> str:
+    """Convert JSONPath ($.) to valid expression variable (JSON__).
+
+    Args:
+        path: JSONPath expression starting with $.
+
+    Returns:
+        Valid expression variable name.
+    """
+    return path.replace("$", "JSON_").replace(".", "_")
 
 
-def parse_expression(txt):
-    """Parse the given expression and returns a parser object"""
+def variable_to_jsonpath(var) -> str:
+    """Convert expression variable back to JSONPath.
+
+    Args:
+        var: Expression variable (either string or object with .var attribute).
+
+    Returns:
+        JSONPath expression starting with $.
+    """
+    name = var.var if hasattr(var, "var") else str(var)
+    return name.replace("JSON_", "$").replace("_", ".")
+
+
+def parse_expression(text: str) -> py_expression_eval.Expression:
+    """Parse expression string into evaluable expression.
+
+    Args:
+        text: Expression string, optionally starting with =.
+
+    Returns:
+        Parsed expression object.
+
+    Raises:
+        ExpressionError: If expression cannot be parsed.
+    """
     try:
-        # remove leading =
-        txt = txt.replace("=", "")
-        return py_expression_eval.Parser().parse(jsonpath_to_variable(txt))
-    except Exception:
-        raise SchemaError('Bad expression format: %s' % txt)
+        # Remove leading = sign
+        text = text.lstrip("=").strip()
+        return py_expression_eval.Parser().parse(jsonpath_to_variable(text))
+    except Exception as e:
+        raise ExpressionError(f"Invalid expression: {text}") from e
