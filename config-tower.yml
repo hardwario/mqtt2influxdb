@@ -3,9 +3,10 @@ mqtt:
   port: 1883
 
 influxdb:
-  host: 127.0.0.1
-  port: 8086
-  database: node
+  host: localhost:8086
+  token: your-api-token
+  org: your-organization
+  bucket: node
 
 points:
   - measurement: temperature

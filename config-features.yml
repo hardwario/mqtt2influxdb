@@ -3,9 +3,10 @@ mqtt:
   port: 1883
 
 influxdb:
-  host: 127.0.0.1
-  port: 8086
-  database: node
+  host: localhost:8086
+  token: your-api-token
+  org: your-organization
+  bucket: node
 
 http:
   destination: https://example.com/content
@@ -19,40 +20,38 @@ base64decode:
 
 points:
   - measurement: temperature
-    database: my_database
+    bucket: my_bucket
     topic: node/+/thermometer/+/temperature
     fields:
       value: $.payload.data
       decodedvalue: $.base64decoded.data.hex
-      foo: 
+      foo:
         value: $.payload.foo
-        type: "float"
+        type: float
     tags:
       id: $.topic[1]
       channel: $.topic[3]
     httpcontent:
       frame: $.base64decoded.data.hex
       skipBytes: "1"
+
   - measurement: hourly_temperature_fahrenheit
-    database: my_database
+    bucket: my_bucket
     topic: node/+/thermometer/+/temperature
     # Schedule support:
     #         ┌───────────── minute (0 - 59)
     #         │ ┌───────────── hour (0 - 23)
     #         │ │ ┌───────────── day of month (1 - 31)
     #         │ │ │ ┌───────────── month (1 - 12)
-    #         │ │ │ │ ┌───────────── day of week (0 - 6) (Sunday to Saturday;
-    #         │ │ │ │ │                                       7 is also Sunday on some systems)
-    #         │ │ │ │ │
+    #         │ │ │ │ ┌───────────── day of week (0 - 6) (Sunday to Saturday)
     #         │ │ │ │ │
     #         * * * * *
     schedule: 0 * * * *
-    # The formats currently supported are
-    #
-    #    */5 (for "every X" function),
-    #    4-10 (for time ranges),
-    #    6,8,23 (for a list of values),
-    #    * (for wildcard),
-    #    and of course a single number.
+    # Supported formats:
+    #    */5 (for "every X" function)
+    #    4-10 (for time ranges)
+    #    6,8,23 (for a list of values)
+    #    * (for wildcard)
+    #    and a single number
     fields:
       value: = 32 + ($.payload.data * 9 / 5)
