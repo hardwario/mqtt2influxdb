@@ -7,7 +7,7 @@ from typing import Any
 
 import jsonpath_ng
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .expr import parse_expression
 
