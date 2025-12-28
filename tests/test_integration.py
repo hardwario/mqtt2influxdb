@@ -361,8 +361,8 @@ class TestWildcardTopics:
 class TestErrorHandling:
     """Tests for error handling in the flow."""
 
-    def test_invalid_json_handled_gracefully(self, mock_services, caplog):
-        """Test invalid JSON is handled without crashing."""
+    def test_raw_string_payload_written(self, mock_services):
+        """Test raw string payloads (non-JSON) are written to InfluxDB."""
         config = Config.model_validate(
             {
                 "mqtt": {"host": "localhost", "port": 1883},
@@ -375,9 +375,10 @@ class TestErrorHandling:
                 },
                 "points": [
                     {
-                        "measurement": "test",
-                        "topic": "test/#",
+                        "measurement": "power_state",
+                        "topic": "stat/+/POWER",
                         "fields": {"value": "$.payload"},
+                        "tags": {"device": "$.topic[1]"},
                     }
                 ],
             }
@@ -387,16 +388,16 @@ class TestErrorHandling:
         mock_write = mock_services["influxdb"].return_value.write
 
         message = MagicMock()
-        message.topic = "test/bad"
-        message.payload = b"not valid json {"
+        message.topic = "stat/device1/POWER"
+        message.payload = b"ON"
         message.qos = 0
 
-        # Should not raise exception
         bridge._on_mqtt_message(None, None, message)
 
-        # Should not write anything
-        mock_write.assert_not_called()
-        assert "Failed to parse JSON" in caplog.text
+        # Raw string payload should be written
+        mock_write.assert_called_once()
+        point = mock_write.call_args[0][0]
+        assert point._name == "power_state"
 
     def test_missing_field_handled_gracefully(self, mock_services, caplog):
         """Test missing field is handled with warning."""

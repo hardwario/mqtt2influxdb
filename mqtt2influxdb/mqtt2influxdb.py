@@ -118,20 +118,34 @@ class Mqtt2InfluxDB:
             self._process_point(point_config, msg)
 
     def _parse_message(self, message) -> dict | None:
-        """Parse MQTT message into structured format."""
+        """Parse MQTT message into structured format.
+
+        Supports both JSON and raw string payloads. If JSON parsing fails,
+        the raw string is used as the payload value.
+        """
         try:
             payload = message.payload.decode("utf-8")
-            if payload == "":
-                payload = "null"
-            payload = json.loads(payload)
-        except Exception as e:
+        except UnicodeDecodeError as e:
             logging.error(
-                "Failed to parse JSON: %s topic: %s payload: %s",
+                "Failed to decode payload: %s topic: %s",
                 e,
                 message.topic,
-                message.payload,
             )
             return None
+
+        # Try to parse as JSON, fall back to raw string
+        if payload == "":
+            payload = None
+        else:
+            try:
+                payload = json.loads(payload)
+            except json.JSONDecodeError:
+                # Keep payload as raw string if not valid JSON
+                logging.debug(
+                    "Payload is not JSON, using raw string: topic=%s",
+                    message.topic,
+                )
+                pass
 
         msg = {
             "topic": message.topic.split("/"),

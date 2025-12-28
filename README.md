@@ -14,6 +14,7 @@ A Python bridge between MQTT messaging and InfluxDB v3 time-series database. Sub
 
 - Subscribe to multiple MQTT topics with wildcard support (`+`, `#`)
 - Write data to InfluxDB v3 with tags and fields
+- Support for both JSON and raw string payloads
 - JSONPath extraction from message payloads
 - Mathematical expressions for computed fields
 - Cron-based scheduling for conditional writes
@@ -136,19 +137,62 @@ points:
       value: $.payload
       converted:
         value: $.payload.raw
-        type: float         # float, int, str, bool, booltoint
+        type: float
       calculated: = 32 + ($.payload.celsius * 9 / 5)
     tags:
       id: $.topic[1]
       channel: $.topic[3]
 ```
 
+### Type Conversion
+
+Fields support optional type conversion:
+
+```yaml
+fields:
+  temperature:
+    value: $.payload.temp
+    type: float
+```
+
+| Type | Description | Example |
+|------|-------------|---------|
+| `float` | Floating-point number | `"123"` → `123.0` |
+| `int` | Integer number | `"42"` → `42` |
+| `str` | String | `123` → `"123"` |
+| `bool` | Boolean | `1` → `true` |
+| `booltoint` | Boolean converted to 0/1 | `true` → `1` |
+
+### Payload Formats
+
+Both JSON and raw string payloads are supported:
+
+| Payload | Parsed As | `$.payload` Value |
+|---------|-----------|-------------------|
+| `25.5` | JSON number | `25.5` (float) |
+| `{"temp": 25}` | JSON object | `{"temp": 25}` |
+| `[1, 2, 3]` | JSON array | `[1, 2, 3]` |
+| `"hello"` | JSON string | `"hello"` |
+| `ON` | Raw string | `"ON"` |
+| `Device ready` | Raw string | `"Device ready"` |
+
+Raw strings are useful for simple MQTT messages like Tasmota power states (`ON`/`OFF`) or status messages.
+
 ### JSONPath Syntax
 
-- `$.payload` - Entire JSON payload
-- `$.payload.temperature` - Nested field
-- `$.payload.data[0]` - Array index
+- `$.payload` - Entire payload (JSON or raw string)
+- `$.payload.temperature` - Nested field (JSON only)
+- `$.payload.data[0]` - Array index (JSON only)
 - `$.topic[n]` - Topic segment (0-indexed)
+- `$.payload['PM2.5']` - Field with special characters (dot, space, etc.)
+
+**Special Characters:** Use bracket notation with quotes for field names containing dots, spaces, or other reserved characters:
+
+```yaml
+# For payload: {"VINDRIKTNING": {"PM2.5": 5}}
+fields:
+  pm25: $.payload.VINDRIKTNING['PM2.5']
+```
 
 ### Environment Variables
 

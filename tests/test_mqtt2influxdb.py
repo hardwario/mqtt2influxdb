@@ -127,8 +127,44 @@ class TestParseMessage:
         assert result is not None
         assert result["payload"] is None
 
-    def test_parse_invalid_json(self, bridge, caplog):
-        """Test parsing invalid JSON returns None."""
+    def test_parse_raw_string_payload(self, bridge):
+        """Test parsing raw string payload (non-JSON) keeps string as-is."""
+        message = MagicMock()
+        message.topic = "test/topic"
+        message.payload = b"OFF"
+        message.qos = 0
+
+        result = bridge._parse_message(message)
+
+        assert result is not None
+        assert result["payload"] == "OFF"
+
+    def test_parse_raw_string_on(self, bridge):
+        """Test parsing ON string payload."""
+        message = MagicMock()
+        message.topic = "stat/device/POWER"
+        message.payload = b"ON"
+        message.qos = 0
+
+        result = bridge._parse_message(message)
+
+        assert result is not None
+        assert result["payload"] == "ON"
+
+    def test_parse_raw_text_payload(self, bridge):
+        """Test parsing plain text payload."""
+        message = MagicMock()
+        message.topic = "test/status"
+        message.payload = b"Device is running"
+        message.qos = 0
+
+        result = bridge._parse_message(message)
+
+        assert result is not None
+        assert result["payload"] == "Device is running"
+
+    def test_parse_malformed_json_as_string(self, bridge):
+        """Test malformed JSON is kept as raw string."""
         message = MagicMock()
         message.topic = "test/topic"
         message.payload = b"not valid json {"
@@ -136,8 +172,8 @@ class TestParseMessage:
 
         result = bridge._parse_message(message)
 
-        assert result is None
-        assert "Failed to parse JSON" in caplog.text
+        assert result is not None
+        assert result["payload"] == "not valid json {"
 
     def test_parse_array_json(self, bridge):
         """Test parsing JSON array payload."""
@@ -208,6 +244,25 @@ class TestGetValue:
         msg = {"topic": ["test"], "payload": {"values": [10, 20, 30]}}
         result = bridge._get_value("$.payload.values[0]", msg)
         assert result == 10
+
+    def test_get_bracket_notation_special_chars(self, bridge):
+        """Test extracting field with special characters using bracket notation."""
+        # Simulates Tasmota VINDRIKTNING sensor with PM2.5 field
+        msg = {
+            "topic": ["tele", "tasmota", "device1", "SENSOR"],
+            "payload": {"VINDRIKTNING": {"PM2.5": 5, "PM10": 12}},
+        }
+        result = bridge._get_value("$.payload.VINDRIKTNING['PM2.5']", msg)
+        assert result == 5
+
+    def test_get_bracket_notation_nested(self, bridge):
+        """Test bracket notation with nested special character fields."""
+        msg = {
+            "topic": ["test"],
+            "payload": {"sensor.data": {"value.raw": 42}},
+        }
+        result = bridge._get_value("$.payload['sensor.data']['value.raw']", msg)
+        assert result == 42
 
     def test_get_expression_value(self, bridge):
         """Test evaluating expression."""

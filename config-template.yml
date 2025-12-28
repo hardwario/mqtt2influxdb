@@ -207,3 +207,19 @@ points:
 
     tags:
       batch_id: $.topic[1]
+
+  # --------------------------------------------------------------------------
+  # Example 7: Field names with special characters (dots, spaces)
+  # --------------------------------------------------------------------------
+  # Use bracket notation for field names containing reserved characters
+  # Payload example: {"VINDRIKTNING": {"PM2.5": 5, "PM10": 12}}
+  - measurement: air_quality
+    topic: tele/tasmota/+/SENSOR
+
+    fields:
+      # Bracket notation for field name with dot
+      pm25: $.payload.VINDRIKTNING['PM2.5']
+      pm10: $.payload.VINDRIKTNING['PM10']
+
+    tags:
+      device: $.topic[2]
