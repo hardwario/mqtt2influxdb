@@ -3,7 +3,8 @@ mqtt:
   port: 1883
 
 influxdb:
-  host: localhost:8086
+  host: localhost
+  port: 8086
   token: your-api-token
   org: your-organization
   bucket: node

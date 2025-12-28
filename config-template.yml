@@ -1,0 +1,209 @@
+# mqtt2influxdb Configuration Template
+# =====================================
+# This file demonstrates all available configuration options.
+# Copy this file and modify it for your deployment.
+#
+# Environment variables can be used anywhere with ${VAR} or ${VAR:default} syntax.
+# Example: ${MQTT2INFLUXDB_INFLUXDB_TOKEN} or ${MQTT2INFLUXDB_MQTT_HOST:localhost}
+
+# ------------------------------------------------------------------------------
+# MQTT Broker Configuration (required)
+# ------------------------------------------------------------------------------
+mqtt:
+  # Broker hostname or IP address
+  host: ${MQTT2INFLUXDB_MQTT_HOST:localhost}
+
+  # Broker port (default: 1883, TLS: 8883)
+  port: ${MQTT2INFLUXDB_MQTT_PORT:1883}
+
+  # Authentication (optional) - leave empty if not required
+  username: ${MQTT2INFLUXDB_MQTT_USERNAME:}
+  password: ${MQTT2INFLUXDB_MQTT_PASSWORD:}
+
+  # TLS/SSL Configuration (optional) - uncomment to enable
+  # cafile: /path/to/ca.crt        # CA certificate for server verification
+  # certfile: /path/to/client.crt  # Client certificate for mutual TLS
+  # keyfile: /path/to/client.key   # Client private key for mutual TLS
+
+# ------------------------------------------------------------------------------
+# InfluxDB v3 Configuration (required)
+# ------------------------------------------------------------------------------
+influxdb:
+  # InfluxDB hostname (without protocol)
+  host: ${MQTT2INFLUXDB_INFLUXDB_HOST:localhost}
+
+  # InfluxDB port (default: 8086)
+  port: ${MQTT2INFLUXDB_INFLUXDB_PORT:8086}
+
+  # API token for authentication (required)
+  token: ${MQTT2INFLUXDB_INFLUXDB_TOKEN}
+
+  # Organization name (required)
+  org: ${MQTT2INFLUXDB_INFLUXDB_ORG:default}
+
+  # Default bucket for data storage (can be overridden per point)
+  bucket: ${MQTT2INFLUXDB_INFLUXDB_BUCKET:metrics}
+
+  # Enable gzip compression for writes (optional, default: false)
+  enable_gzip: false
+
+# ------------------------------------------------------------------------------
+# HTTP Forwarding Configuration (optional)
+# ------------------------------------------------------------------------------
+# Uncomment to forward processed data to an HTTP endpoint
+#
+# http:
+#   # Destination URL for HTTP requests
+#   destination: https://api.example.com/webhook
+#
+#   # HTTP method: post, put, patch, etc.
+#   action: post
+#
+#   # Basic authentication (optional)
+#   username: ${MQTT2INFLUXDB_HTTP_USERNAME:}
+#   password: ${MQTT2INFLUXDB_HTTP_PASSWORD:}
+
+# ------------------------------------------------------------------------------
+# Base64 Decoding Configuration (optional)
+# ------------------------------------------------------------------------------
+# Uncomment to decode base64-encoded data in MQTT payloads
+# Creates $.base64decoded.<target>.raw (bytes) and $.base64decoded.<target>.hex
+#
+# base64decode:
+#   # JSONPath to the base64-encoded string in the payload
+#   source: $.payload.data
+#
+#   # Name for the decoded data (accessible as $.base64decoded.<target>)
+#   target: decoded
+
+# ------------------------------------------------------------------------------
+# Measurement Points Configuration (required)
+# ------------------------------------------------------------------------------
+# Each point maps MQTT messages to InfluxDB measurements.
+# At least one point must be defined.
+
+points:
+  # --------------------------------------------------------------------------
+  # Example 1: Simple numeric value
+  # --------------------------------------------------------------------------
+  - measurement: temperature
+    # MQTT topic pattern (supports + and # wildcards)
+    # + matches single level: sensors/+/temp matches sensors/room1/temp
+    # # matches multiple levels: sensors/# matches sensors/room1/temp/celsius
+    topic: sensors/+/temperature
+
+    # Fields to write to InfluxDB (at least one required)
+    fields:
+      # Simple JSONPath extraction - $.payload is the message content
+      value: $.payload
+
+    # Tags for indexing and filtering (optional)
+    tags:
+      # Extract topic segments using $.topic[n] (0-indexed)
+      # For topic "sensors/room1/temperature", $.topic[1] = "room1"
+      location: $.topic[1]
+
+  # --------------------------------------------------------------------------
+  # Example 2: JSON payload with multiple fields and type conversion
+  # --------------------------------------------------------------------------
+  - measurement: environment
+    topic: devices/+/telemetry
+
+    fields:
+      # Extract nested JSON fields
+      temperature: $.payload.temperature
+      humidity: $.payload.humidity
+
+      # Type conversion: float, int, str, bool, booltoint
+      pressure:
+        value: $.payload.pressure
+        type: float
+
+      # Convert boolean to integer (true=1, false=0)
+      motion_detected:
+        value: $.payload.motion
+        type: booltoint
+
+    tags:
+      device_id: $.topic[1]
+
+  # --------------------------------------------------------------------------
+  # Example 3: Computed field using mathematical expression
+  # --------------------------------------------------------------------------
+  - measurement: temperature_fahrenheit
+    topic: sensors/+/temperature
+
+    fields:
+      # Expressions start with "=" and can reference JSONPath variables
+      # Supported operators: + - * / ^ %
+      value: = 32 + ($.payload * 9 / 5)
+
+    tags:
+      location: $.topic[1]
+
+  # --------------------------------------------------------------------------
+  # Example 4: Scheduled writes with cron expression
+  # --------------------------------------------------------------------------
+  - measurement: hourly_average
+    topic: sensors/+/temperature
+
+    # Cron schedule - only write when schedule matches current time
+    #
+    # Examples:
+    #   0 * * * *     - Every hour at minute 0
+    #   */15 * * * *  - Every 15 minutes
+    #   0 9 * * 1-5   - 9 AM on weekdays
+    #   0 0 1 * *     - Midnight on first day of month
+    #
+    #          ┌───────────── minute (0-59)
+    #          │ ┌───────────── hour (0-23)
+    #          │ │ ┌───────────── day of month (1-31)
+    #          │ │ │ ┌───────────── month (1-12)
+    #          │ │ │ │ ┌───────────── day of week (0-6, Sunday=0)
+    #          │ │ │ │ │
+    #          * * * * *
+    schedule: "0 * * * *"
+
+    fields:
+      value: $.payload
+
+    tags:
+      location: $.topic[1]
+
+  # --------------------------------------------------------------------------
+  # Example 5: Custom bucket and HTTP forwarding
+  # --------------------------------------------------------------------------
+  - measurement: critical_alerts
+    topic: alerts/+/critical
+
+    # Override default bucket for this measurement
+    bucket: alerts_bucket
+
+    fields:
+      severity: $.payload.severity
+      message: $.payload.message
+
+    tags:
+      source: $.topic[1]
+
+    # Data to forward to HTTP endpoint (requires http section above)
+    # httpcontent:
+    #   alert_type: $.payload.type
+    #   alert_message: $.payload.message
+
+  # --------------------------------------------------------------------------
+  # Example 6: Array access and complex JSONPath
+  # --------------------------------------------------------------------------
+  - measurement: sensor_readings
+    topic: batch/+/data
+
+    fields:
+      # Access array elements by index
+      first_reading: $.payload.readings[0]
+      second_reading: $.payload.readings[1]
+
+      # Access nested object properties
+      metadata_version: $.payload.meta.version
+
+    tags:
+      batch_id: $.topic[1]
