@@ -6,7 +6,7 @@ A Python bridge between MQTT messaging and InfluxDB v3 time-series database. Sub
 
 [![Release](https://img.shields.io/github/release/hardwario/bch-mqtt2influxdb.svg)](https://github.com/hardwario/bch-mqtt2influxdb/releases)
 [![PyPI](https://img.shields.io/pypi/v/mqtt2influxdb.svg)](https://pypi.org/project/mqtt2influxdb/)
-[![License](https://img.shields.io/github/license/hardwario/bch-mqtt2influxdb.svg)](https://github.com/hardwario/bch-mqtt2influxdb/blob/master/LICENSE)
+[![License](https://img.shields.io/github/license/hardwario/bch-mqtt2influxdb.svg)](https://github.com/hardwario/bch-mqtt2influxdb/blob/main/LICENSE)
 
 ## Features
 
