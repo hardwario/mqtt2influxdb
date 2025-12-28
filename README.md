@@ -57,7 +57,8 @@ mqtt:
   port: 1883
 
 influxdb:
-  host: localhost:8086
+  host: localhost
+  port: 8086
   token: your-api-token
   org: your-organization
   bucket: your-bucket
@@ -115,7 +116,8 @@ mqtt:
 
 ```yaml
 influxdb:
-  host: localhost:8086     # InfluxDB host URL
+  host: localhost          # InfluxDB hostname
+  port: 8086               # InfluxDB port
   token: your-api-token    # API token
   org: your-organization   # Organization name
   bucket: your-bucket      # Default bucket
@@ -147,6 +149,29 @@ points:
 - `$.payload.temperature` - Nested field
 - `$.payload.data[0]` - Array index
 - `$.topic[n]` - Topic segment (0-indexed)
+
+### Environment Variables
+
+Use `${VAR}` or `${VAR:default}` syntax to substitute environment variables in any string value.
+
+```yaml
+mqtt:
+  host: ${MQTT2INFLUXDB_MQTT_HOST:localhost}
+  port: ${MQTT2INFLUXDB_MQTT_PORT:1883}
+  username: ${MQTT2INFLUXDB_MQTT_USERNAME:}
+  password: ${MQTT2INFLUXDB_MQTT_PASSWORD:}
+
+influxdb:
+  host: ${MQTT2INFLUXDB_INFLUXDB_HOST:localhost}
+  port: ${MQTT2INFLUXDB_INFLUXDB_PORT:8086}
+  token: ${MQTT2INFLUXDB_INFLUXDB_TOKEN}
+  org: ${MQTT2INFLUXDB_INFLUXDB_ORG:default}
+  bucket: ${MQTT2INFLUXDB_INFLUXDB_BUCKET:metrics}
+```
+
+- `${VAR}` - Required variable (error if not set)
+- `${VAR:default}` - Optional variable with default value
+- `${VAR:}` - Optional variable with empty default
 
 ### Optional HTTP Forwarding
 

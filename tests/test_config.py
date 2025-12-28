@@ -86,12 +86,13 @@ class TestInfluxDBConfig:
     def test_minimal_config(self):
         """Test minimal InfluxDB config."""
         config = InfluxDBConfig(
-            host="http://localhost:8086",
+            host="localhost",
             token="my-token",
             org="my-org",
             bucket="my-bucket",
         )
-        assert config.host == "http://localhost:8086"
+        assert config.host == "localhost"
+        assert config.port == 8086
         assert config.token == "my-token"
         assert config.org == "my-org"
         assert config.bucket == "my-bucket"
@@ -100,7 +101,7 @@ class TestInfluxDBConfig:
     def test_with_gzip(self):
         """Test InfluxDB config with gzip enabled."""
         config = InfluxDBConfig(
-            host="http://localhost:8086",
+            host="localhost",
             token="token",
             org="org",
             bucket="bucket",
@@ -112,7 +113,7 @@ class TestInfluxDBConfig:
         """Test missing token is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             InfluxDBConfig(
-                host="http://localhost:8086",
+                host="localhost",
                 org="org",
                 bucket="bucket",
             )
@@ -122,7 +123,7 @@ class TestInfluxDBConfig:
         """Test missing org is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             InfluxDBConfig(
-                host="http://localhost:8086",
+                host="localhost",
                 token="token",
                 bucket="bucket",
             )
@@ -132,7 +133,7 @@ class TestInfluxDBConfig:
         """Test empty bucket is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             InfluxDBConfig(
-                host="http://localhost:8086",
+                host="localhost",
                 token="token",
                 org="org",
                 bucket="",
@@ -295,7 +296,8 @@ class TestConfig:
                 {
                     "mqtt": {"host": "localhost", "port": 1883},
                     "influxdb": {
-                        "host": "http://localhost:8086",
+                        "host": "localhost",
+                        "port": 8086,
                         "token": "token",
                         "org": "org",
                         "bucket": "bucket",
@@ -311,7 +313,8 @@ class TestConfig:
             Config.model_validate(
                 {
                     "influxdb": {
-                        "host": "http://localhost:8086",
+                        "host": "localhost",
+                        "port": 8086,
                         "token": "token",
                         "org": "org",
                         "bucket": "bucket",
@@ -438,3 +441,253 @@ class TestCrontabRegex:
             assert not CRONTAB_REGEX.match(pattern), (
                 f"Pattern should not match: {pattern}"
             )
+
+
+class TestEnvironmentVariables:
+    """Tests for environment variable substitution."""
+
+    def test_env_var_substitution(self, monkeypatch):
+        """Test ${VAR} substitution works."""
+        monkeypatch.setenv("MQTT2INFLUXDB_INFLUXDB_TOKEN", "secret-token-123")
+
+        yaml_content = """
+mqtt:
+  host: localhost
+  port: 1883
+influxdb:
+  host: localhost
+  port: 8086
+  token: ${MQTT2INFLUXDB_INFLUXDB_TOKEN}
+  org: test-org
+  bucket: test-bucket
+points:
+  - measurement: test
+    topic: test/#
+    fields:
+      value: $.payload
+"""
+        config = load_config(StringIO(yaml_content))
+        assert config.influxdb.token == "secret-token-123"
+
+    def test_env_var_with_default(self, monkeypatch):
+        """Test ${VAR:default} substitution uses default when var not set."""
+        monkeypatch.delenv("MQTT2INFLUXDB_MQTT_HOST", raising=False)
+
+        yaml_content = """
+mqtt:
+  host: ${MQTT2INFLUXDB_MQTT_HOST:localhost}
+  port: 1883
+influxdb:
+  host: localhost
+  port: 8086
+  token: test-token
+  org: test-org
+  bucket: test-bucket
+points:
+  - measurement: test
+    topic: test/#
+    fields:
+      value: $.payload
+"""
+        config = load_config(StringIO(yaml_content))
+        assert config.mqtt.host == "localhost"
+
+    def test_env_var_with_default_override(self, monkeypatch):
+        """Test ${VAR:default} uses env var value when set."""
+        monkeypatch.setenv("MQTT2INFLUXDB_MQTT_HOST", "mqtt.example.com")
+
+        yaml_content = """
+mqtt:
+  host: ${MQTT2INFLUXDB_MQTT_HOST:localhost}
+  port: 1883
+influxdb:
+  host: localhost
+  port: 8086
+  token: test-token
+  org: test-org
+  bucket: test-bucket
+points:
+  - measurement: test
+    topic: test/#
+    fields:
+      value: $.payload
+"""
+        config = load_config(StringIO(yaml_content))
+        assert config.mqtt.host == "mqtt.example.com"
+
+    def test_env_var_empty_default(self, monkeypatch):
+        """Test ${VAR:} uses empty string as default."""
+        monkeypatch.delenv("MQTT2INFLUXDB_MQTT_USERNAME", raising=False)
+
+        yaml_content = """
+mqtt:
+  host: localhost
+  port: 1883
+  username: ${MQTT2INFLUXDB_MQTT_USERNAME:}
+influxdb:
+  host: localhost
+  port: 8086
+  token: test-token
+  org: test-org
+  bucket: test-bucket
+points:
+  - measurement: test
+    topic: test/#
+    fields:
+      value: $.payload
+"""
+        # Empty string should fail min_length=1 validation
+        with pytest.raises(ConfigError):
+            load_config(StringIO(yaml_content))
+
+    def test_env_var_missing_raises_error(self, monkeypatch):
+        """Test missing required env var raises ConfigError."""
+        monkeypatch.delenv("MQTT2INFLUXDB_INFLUXDB_TOKEN", raising=False)
+
+        yaml_content = """
+mqtt:
+  host: localhost
+  port: 1883
+influxdb:
+  host: localhost
+  port: 8086
+  token: ${MQTT2INFLUXDB_INFLUXDB_TOKEN}
+  org: test-org
+  bucket: test-bucket
+points:
+  - measurement: test
+    topic: test/#
+    fields:
+      value: $.payload
+"""
+        with pytest.raises(ConfigError) as exc_info:
+            load_config(StringIO(yaml_content))
+        assert "MQTT2INFLUXDB_INFLUXDB_TOKEN" in str(exc_info.value)
+
+    def test_multiple_env_vars_in_string(self, monkeypatch):
+        """Test multiple env vars in one string."""
+        monkeypatch.setenv("MQTT2INFLUXDB_HTTP_HOST", "api.example.com")
+        monkeypatch.setenv("MQTT2INFLUXDB_HTTP_PORT", "443")
+
+        yaml_content = """
+mqtt:
+  host: localhost
+  port: 1883
+influxdb:
+  host: localhost
+  port: 8086
+  token: test-token
+  org: test-org
+  bucket: test-bucket
+http:
+  destination: https://${MQTT2INFLUXDB_HTTP_HOST}:${MQTT2INFLUXDB_HTTP_PORT}/api
+  action: post
+points:
+  - measurement: test
+    topic: test/#
+    fields:
+      value: $.payload
+"""
+        config = load_config(StringIO(yaml_content))
+        assert config.http.destination == "https://api.example.com:443/api"
+
+    def test_env_var_influxdb_port(self, monkeypatch):
+        """Test InfluxDB port from environment variable."""
+        monkeypatch.setenv("MQTT2INFLUXDB_INFLUXDB_HOST", "influxdb.example.com")
+        monkeypatch.setenv("MQTT2INFLUXDB_INFLUXDB_PORT", "8087")
+
+        yaml_content = """
+mqtt:
+  host: localhost
+  port: 1883
+influxdb:
+  host: ${MQTT2INFLUXDB_INFLUXDB_HOST}
+  port: ${MQTT2INFLUXDB_INFLUXDB_PORT:8086}
+  token: test-token
+  org: test-org
+  bucket: test-bucket
+points:
+  - measurement: test
+    topic: test/#
+    fields:
+      value: $.payload
+"""
+        config = load_config(StringIO(yaml_content))
+        assert config.influxdb.host == "influxdb.example.com"
+        assert config.influxdb.port == 8087
+
+    def test_env_var_in_nested_config(self, monkeypatch):
+        """Test env var substitution in nested structures."""
+        monkeypatch.setenv("MQTT2INFLUXDB_HTTP_USERNAME", "api-user")
+        monkeypatch.setenv("MQTT2INFLUXDB_HTTP_PASSWORD", "api-secret")
+
+        yaml_content = """
+mqtt:
+  host: localhost
+  port: 1883
+influxdb:
+  host: localhost
+  port: 8086
+  token: test-token
+  org: test-org
+  bucket: test-bucket
+http:
+  destination: https://api.example.com
+  action: post
+  username: ${MQTT2INFLUXDB_HTTP_USERNAME}
+  password: ${MQTT2INFLUXDB_HTTP_PASSWORD}
+points:
+  - measurement: test
+    topic: test/#
+    fields:
+      value: $.payload
+"""
+        config = load_config(StringIO(yaml_content))
+        assert config.http.username == "api-user"
+        assert config.http.password == "api-secret"
+
+    def test_env_var_mqtt_port(self, monkeypatch):
+        """Test MQTT port from environment variable."""
+        monkeypatch.setenv("MQTT2INFLUXDB_MQTT_PORT", "8883")
+
+        yaml_content = """
+mqtt:
+  host: localhost
+  port: ${MQTT2INFLUXDB_MQTT_PORT:1883}
+influxdb:
+  host: localhost
+  port: 8086
+  token: test-token
+  org: test-org
+  bucket: test-bucket
+points:
+  - measurement: test
+    topic: test/#
+    fields:
+      value: $.payload
+"""
+        config = load_config(StringIO(yaml_content))
+        assert config.mqtt.port == 8883
+
+    def test_env_var_mqtt_port_default(self, monkeypatch):
+        """Test MQTT port uses default when env var not set."""
+        monkeypatch.delenv("MQTT2INFLUXDB_MQTT_PORT", raising=False)
+
+        yaml_content = """
+mqtt:
+  host: localhost
+  port: ${MQTT2INFLUXDB_MQTT_PORT:1883}
+influxdb:
+  host: localhost
+  port: 8086
+  token: test-token
+  org: test-org
+  bucket: test-bucket
+points:
+  - measurement: test
+    topic: test/#
+    fields:
+      value: $.payload
+"""
+        config = load_config(StringIO(yaml_content))
+        assert config.mqtt.port == 1883

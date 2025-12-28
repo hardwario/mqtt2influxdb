@@ -1,6 +1,7 @@
 """Configuration models for mqtt2influxdb using Pydantic."""
 
 import logging
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,9 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .expr import parse_expression
+
+# Regex for environment variable substitution: ${VAR} or ${VAR:default}
+ENV_VAR_REGEX = re.compile(r"\$\{([^}:]+)(?::([^}]*))?\}")
 
 # Regex for schedule config entries
 CRONTAB_REGEX = re.compile(
@@ -53,7 +57,8 @@ class InfluxDBConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    host: str = Field(..., min_length=1, description="InfluxDB host URL")
+    host: str = Field(..., min_length=1, description="InfluxDB hostname")
+    port: int = Field(default=8086, ge=0, le=65535, description="InfluxDB port")
     token: str = Field(..., min_length=1, description="API token")
     org: str = Field(..., min_length=1, description="Organization name")
     bucket: str = Field(..., min_length=1, description="Default bucket name")
@@ -155,8 +160,59 @@ def validate_value_spec(value: str) -> Any:
     return validate_jsonpath(value)
 
 
+def _expand_env_vars(value: str) -> str:
+    """Expand environment variables in a string.
+
+    Supports ${VAR} and ${VAR:default} syntax.
+
+    Args:
+        value: String potentially containing ${VAR} or ${VAR:default} patterns.
+
+    Returns:
+        String with environment variables expanded.
+
+    Raises:
+        ConfigError: If a required environment variable is not set.
+    """
+
+    def replacer(match: re.Match) -> str:
+        var_name = match.group(1)
+        default = match.group(2)
+        env_value = os.environ.get(var_name)
+
+        if env_value is not None:
+            return env_value
+        if default is not None:
+            return default
+
+        raise ConfigError(f"Environment variable '{var_name}' is not set")
+
+    return ENV_VAR_REGEX.sub(replacer, value)
+
+
+def _expand_env_vars_recursive(data: Any) -> Any:
+    """Recursively expand environment variables in configuration data.
+
+    Args:
+        data: Configuration data (dict, list, or scalar).
+
+    Returns:
+        Configuration data with environment variables expanded.
+    """
+    if isinstance(data, dict):
+        return {k: _expand_env_vars_recursive(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [_expand_env_vars_recursive(item) for item in data]
+    if isinstance(data, str):
+        return _expand_env_vars(data)
+    return data
+
+
 def load_config(config_file) -> Config:
     """Load and validate configuration from YAML file.
+
+    Supports environment variable substitution using ${VAR} or ${VAR:default}
+    syntax in any string value.
 
     Args:
         config_file: File-like object containing YAML configuration.
@@ -165,12 +221,15 @@ def load_config(config_file) -> Config:
         Validated Config object.
 
     Raises:
-        ConfigError: If configuration is invalid.
+        ConfigError: If configuration is invalid or required env vars are missing.
     """
     try:
         data = yaml.safe_load(config_file)
         if data is None:
             raise ConfigError("Empty configuration file")
+        data = _expand_env_vars_recursive(data)
         return Config.model_validate(data)
+    except ConfigError:
+        raise
     except Exception as e:
         raise ConfigError(str(e)) from e

@@ -41,7 +41,7 @@ class TestMqtt2InfluxDBInit:
         Mqtt2InfluxDB(minimal_config)
 
         mock_influxdb.assert_called_once_with(
-            host="http://localhost:8086",
+            host="localhost:8086",
             token="test-token",
             org="test-org",
             database="test-bucket",
@@ -64,7 +64,8 @@ class TestMqtt2InfluxDBInit:
                     "password": "pass",
                 },
                 "influxdb": {
-                    "host": "http://localhost:8086",
+                    "host": "localhost",
+                    "port": 8086,
                     "token": "token",
                     "org": "org",
                     "bucket": "bucket",
@@ -359,7 +360,8 @@ class TestBase64Decode:
             {
                 "mqtt": {"host": "localhost", "port": 1883},
                 "influxdb": {
-                    "host": "http://localhost:8086",
+                    "host": "localhost",
+                    "port": 8086,
                     "token": "token",
                     "org": "org",
                     "bucket": "bucket",

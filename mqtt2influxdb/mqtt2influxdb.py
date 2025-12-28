@@ -24,8 +24,9 @@ class Mqtt2InfluxDB:
         self._points = config.points
 
         # Initialize InfluxDB v3 client
+        influxdb_host = f"{config.influxdb.host}:{config.influxdb.port}"
         self._influxdb = InfluxDBClient3(
-            host=config.influxdb.host,
+            host=influxdb_host,
             token=config.influxdb.token,
             org=config.influxdb.org,
             database=config.influxdb.bucket,
