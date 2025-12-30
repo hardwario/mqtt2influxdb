@@ -15,6 +15,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify version matches tag
+        run: |
+          PKG_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          TAG_VERSION=${GITHUB_REF_NAME#v}
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Version mismatch: pyproject.toml has $PKG_VERSION but tag is $TAG_VERSION"
+            exit 1
+          fi
+          echo "Version verified: $PKG_VERSION"
+
       - name: Install uv
         uses: astral-sh/setup-uv@v4
 
