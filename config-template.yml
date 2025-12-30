@@ -32,8 +32,8 @@ influxdb:
   # InfluxDB hostname (without protocol)
   host: ${MQTT2INFLUXDB_INFLUXDB_HOST:localhost}
 
-  # InfluxDB port (default: 8086)
-  port: ${MQTT2INFLUXDB_INFLUXDB_PORT:8086}
+  # InfluxDB port (default: 8181)
+  port: ${MQTT2INFLUXDB_INFLUXDB_PORT:8181}
 
   # API token for authentication (required)
   token: ${MQTT2INFLUXDB_INFLUXDB_TOKEN}
@@ -212,14 +212,14 @@ points:
   # Example 7: Field names with special characters (dots, spaces)
   # --------------------------------------------------------------------------
   # Use bracket notation for field names containing reserved characters
-  # Payload example: {"VINDRIKTNING": {"PM2.5": 5, "PM10": 12}}
+  # Payload example: {"air_quality_sensor": {"pm2.5": 5, "pm10": 12}}
   - measurement: air_quality
     topic: tele/tasmota/+/SENSOR
 
     fields:
       # Bracket notation for field name with dot
-      pm25: $.payload.VINDRIKTNING['PM2.5']
-      pm10: $.payload.VINDRIKTNING['PM10']
+      pm25: $.payload.air_quality_sensor['pm2.5']
+      pm10: $.payload.air_quality_sensor['pm10']
 
     tags:
       device: $.topic[2]

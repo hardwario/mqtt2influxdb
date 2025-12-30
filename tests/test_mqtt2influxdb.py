@@ -41,7 +41,7 @@ class TestMqtt2InfluxDBInit:
         Mqtt2InfluxDB(minimal_config)
 
         mock_influxdb.assert_called_once_with(
-            host="localhost:8086",
+            host="localhost:8181",
             token="test-token",
             org="test-org",
             database="test-bucket",
@@ -65,7 +65,7 @@ class TestMqtt2InfluxDBInit:
                 },
                 "influxdb": {
                     "host": "localhost",
-                    "port": 8086,
+                    "port": 8181,
                     "token": "token",
                     "org": "org",
                     "bucket": "bucket",
@@ -247,12 +247,12 @@ class TestGetValue:
 
     def test_get_bracket_notation_special_chars(self, bridge):
         """Test extracting field with special characters using bracket notation."""
-        # Simulates Tasmota VINDRIKTNING sensor with PM2.5 field
+        # Simulates air quality sensor with PM2.5 field
         msg = {
-            "topic": ["tele", "tasmota", "device1", "SENSOR"],
-            "payload": {"VINDRIKTNING": {"PM2.5": 5, "PM10": 12}},
+            "topic": ["test"],
+            "payload": {"air_quality_sensor": {"pm2.5": 5, "pm10": 12}},
         }
-        result = bridge._get_value("$.payload.VINDRIKTNING['PM2.5']", msg)
+        result = bridge._get_value("$.payload.air_quality_sensor['pm2.5']", msg)
         assert result == 5
 
     def test_get_bracket_notation_nested(self, bridge):
@@ -416,7 +416,7 @@ class TestBase64Decode:
                 "mqtt": {"host": "localhost", "port": 1883},
                 "influxdb": {
                     "host": "localhost",
-                    "port": 8086,
+                    "port": 8181,
                     "token": "token",
                     "org": "org",
                     "bucket": "bucket",

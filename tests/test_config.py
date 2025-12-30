@@ -92,7 +92,7 @@ class TestInfluxDBConfig:
             bucket="my-bucket",
         )
         assert config.host == "localhost"
-        assert config.port == 8086
+        assert config.port == 8181
         assert config.token == "my-token"
         assert config.org == "my-org"
         assert config.bucket == "my-bucket"
@@ -302,7 +302,7 @@ class TestConfig:
                     "mqtt": {"host": "localhost", "port": 1883},
                     "influxdb": {
                         "host": "localhost",
-                        "port": 8086,
+                        "port": 8181,
                         "token": "token",
                         "org": "org",
                         "bucket": "bucket",
@@ -319,7 +319,7 @@ class TestConfig:
                 {
                     "influxdb": {
                         "host": "localhost",
-                        "port": 8086,
+                        "port": 8181,
                         "token": "token",
                         "org": "org",
                         "bucket": "bucket",
@@ -461,7 +461,7 @@ mqtt:
   port: 1883
 influxdb:
   host: localhost
-  port: 8086
+  port: 8181
   token: ${MQTT2INFLUXDB_INFLUXDB_TOKEN}
   org: test-org
   bucket: test-bucket
@@ -484,7 +484,7 @@ mqtt:
   port: 1883
 influxdb:
   host: localhost
-  port: 8086
+  port: 8181
   token: test-token
   org: test-org
   bucket: test-bucket
@@ -507,7 +507,7 @@ mqtt:
   port: 1883
 influxdb:
   host: localhost
-  port: 8086
+  port: 8181
   token: test-token
   org: test-org
   bucket: test-bucket
@@ -531,7 +531,7 @@ mqtt:
   username: ${MQTT2INFLUXDB_MQTT_USERNAME:}
 influxdb:
   host: localhost
-  port: 8086
+  port: 8181
   token: test-token
   org: test-org
   bucket: test-bucket
@@ -555,7 +555,7 @@ mqtt:
   port: 1883
 influxdb:
   host: localhost
-  port: 8086
+  port: 8181
   token: ${MQTT2INFLUXDB_INFLUXDB_TOKEN}
   org: test-org
   bucket: test-bucket
@@ -580,7 +580,7 @@ mqtt:
   port: 1883
 influxdb:
   host: localhost
-  port: 8086
+  port: 8181
   token: test-token
   org: test-org
   bucket: test-bucket
@@ -607,7 +607,7 @@ mqtt:
   port: 1883
 influxdb:
   host: ${MQTT2INFLUXDB_INFLUXDB_HOST}
-  port: ${MQTT2INFLUXDB_INFLUXDB_PORT:8086}
+  port: ${MQTT2INFLUXDB_INFLUXDB_PORT:8181}
   token: test-token
   org: test-org
   bucket: test-bucket
@@ -632,7 +632,7 @@ mqtt:
   port: 1883
 influxdb:
   host: localhost
-  port: 8086
+  port: 8181
   token: test-token
   org: test-org
   bucket: test-bucket
@@ -661,7 +661,7 @@ mqtt:
   port: ${MQTT2INFLUXDB_MQTT_PORT:1883}
 influxdb:
   host: localhost
-  port: 8086
+  port: 8181
   token: test-token
   org: test-org
   bucket: test-bucket
@@ -684,7 +684,7 @@ mqtt:
   port: ${MQTT2INFLUXDB_MQTT_PORT:1883}
 influxdb:
   host: localhost
-  port: 8086
+  port: 8181
   token: test-token
   org: test-org
   bucket: test-bucket

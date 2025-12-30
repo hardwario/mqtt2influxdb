@@ -59,7 +59,7 @@ def main(
     test: bool,
     daemon: bool,
 ) -> None:
-    """MQTT to InfluxDB v3 bridge.
+    """MQTT to InfluxDB v3 bridge with flexible JSONPath transformation.
 
     Subscribes to MQTT topics and writes data points to InfluxDB v3.
     """

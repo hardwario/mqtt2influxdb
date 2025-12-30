@@ -12,7 +12,7 @@ def minimal_config_dict():
         "mqtt": {"host": "localhost", "port": 1883},
         "influxdb": {
             "host": "localhost",
-            "port": 8086,
+            "port": 8181,
             "token": "test-token",
             "org": "test-org",
             "bucket": "test-bucket",
@@ -45,7 +45,7 @@ def full_config_dict():
         },
         "influxdb": {
             "host": "localhost",
-            "port": 8086,
+            "port": 8181,
             "token": "test-token",
             "org": "test-org",
             "bucket": "test-bucket",

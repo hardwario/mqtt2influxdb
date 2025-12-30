@@ -31,7 +31,7 @@ class TestBasicFlow:
                 "mqtt": {"host": "localhost", "port": 1883},
                 "influxdb": {
                     "host": "localhost",
-                    "port": 8086,
+                    "port": 8181,
                     "token": "token",
                     "org": "org",
                     "bucket": "test",
@@ -73,7 +73,7 @@ class TestBasicFlow:
                 "mqtt": {"host": "localhost", "port": 1883},
                 "influxdb": {
                     "host": "localhost",
-                    "port": 8086,
+                    "port": 8181,
                     "token": "token",
                     "org": "org",
                     "bucket": "test",
@@ -118,7 +118,7 @@ class TestTypeConversion:
                 "mqtt": {"host": "localhost", "port": 1883},
                 "influxdb": {
                     "host": "localhost",
-                    "port": 8086,
+                    "port": 8181,
                     "token": "token",
                     "org": "org",
                     "bucket": "test",
@@ -155,7 +155,7 @@ class TestTypeConversion:
                 "mqtt": {"host": "localhost", "port": 1883},
                 "influxdb": {
                     "host": "localhost",
-                    "port": 8086,
+                    "port": 8181,
                     "token": "token",
                     "org": "org",
                     "bucket": "test",
@@ -195,7 +195,7 @@ class TestExpressionEvaluation:
                 "mqtt": {"host": "localhost", "port": 1883},
                 "influxdb": {
                     "host": "localhost",
-                    "port": 8086,
+                    "port": 8181,
                     "token": "token",
                     "org": "org",
                     "bucket": "test",
@@ -242,7 +242,7 @@ class TestArrayAccess:
                 "mqtt": {"host": "localhost", "port": 1883},
                 "influxdb": {
                     "host": "localhost",
-                    "port": 8086,
+                    "port": 8181,
                     "token": "token",
                     "org": "org",
                     "bucket": "test",
@@ -284,7 +284,7 @@ class TestWildcardTopics:
                 "mqtt": {"host": "localhost", "port": 1883},
                 "influxdb": {
                     "host": "localhost",
-                    "port": 8086,
+                    "port": 8181,
                     "token": "token",
                     "org": "org",
                     "bucket": "test",
@@ -321,7 +321,7 @@ class TestWildcardTopics:
                 "mqtt": {"host": "localhost", "port": 1883},
                 "influxdb": {
                     "host": "localhost",
-                    "port": 8086,
+                    "port": 8181,
                     "token": "token",
                     "org": "org",
                     "bucket": "test",
@@ -368,7 +368,7 @@ class TestErrorHandling:
                 "mqtt": {"host": "localhost", "port": 1883},
                 "influxdb": {
                     "host": "localhost",
-                    "port": 8086,
+                    "port": 8181,
                     "token": "token",
                     "org": "org",
                     "bucket": "test",
@@ -406,7 +406,7 @@ class TestErrorHandling:
                 "mqtt": {"host": "localhost", "port": 1883},
                 "influxdb": {
                     "host": "localhost",
-                    "port": 8086,
+                    "port": 8181,
                     "token": "token",
                     "org": "org",
                     "bucket": "test",
@@ -446,7 +446,7 @@ class TestErrorHandling:
                 "mqtt": {"host": "localhost", "port": 1883},
                 "influxdb": {
                     "host": "localhost",
-                    "port": 8086,
+                    "port": 8181,
                     "token": "token",
                     "org": "org",
                     "bucket": "test",
@@ -481,7 +481,7 @@ class TestErrorHandling:
                 "mqtt": {"host": "localhost", "port": 1883},
                 "influxdb": {
                     "host": "localhost",
-                    "port": 8086,
+                    "port": 8181,
                     "token": "token",
                     "org": "org",
                     "bucket": "test",
@@ -521,7 +521,7 @@ class TestCustomBucket:
                 "mqtt": {"host": "localhost", "port": 1883},
                 "influxdb": {
                     "host": "localhost",
-                    "port": 8086,
+                    "port": 8181,
                     "token": "token",
                     "org": "org",
                     "bucket": "default_bucket",
@@ -558,7 +558,7 @@ class TestCustomBucket:
                 "mqtt": {"host": "localhost", "port": 1883},
                 "influxdb": {
                     "host": "localhost",
-                    "port": 8086,
+                    "port": 8181,
                     "token": "token",
                     "org": "org",
                     "bucket": "default_bucket",
@@ -599,7 +599,7 @@ class TestHttpForwarding:
                     "mqtt": {"host": "localhost", "port": 1883},
                     "influxdb": {
                         "host": "localhost",
-                    "port": 8086,
+                    "port": 8181,
                         "token": "token",
                         "org": "org",
                         "bucket": "test",
@@ -642,7 +642,7 @@ class TestMultiplePoints:
                 "mqtt": {"host": "localhost", "port": 1883},
                 "influxdb": {
                     "host": "localhost",
-                    "port": 8086,
+                    "port": 8181,
                     "token": "token",
                     "org": "org",
                     "bucket": "test",

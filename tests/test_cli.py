@@ -25,7 +25,7 @@ def valid_config_file():
         "mqtt": {"host": "localhost", "port": 1883},
         "influxdb": {
             "host": "localhost",
-            "port": 8086,
+            "port": 8181,
             "token": "test-token",
             "org": "test-org",
             "bucket": "test-bucket",
@@ -53,7 +53,7 @@ def invalid_config_file():
         "mqtt": {"host": "localhost", "port": 99999},  # Invalid port
         "influxdb": {
             "host": "localhost",
-            "port": 8086,
+            "port": 8181,
             "token": "token",
             "org": "org",
             "bucket": "bucket",
@@ -194,7 +194,7 @@ class TestCLIConfigValidation:
             "mqtt": {"host": "localhost", "port": 1883},
             "influxdb": {
                 "host": "localhost",
-            "port": 8086,
+            "port": 8181,
                 "token": "token",
                 "org": "org",
                 "bucket": "bucket",
@@ -219,7 +219,7 @@ class TestCLIConfigValidation:
             "mqtt": {"host": "localhost", "port": 1883},
             "influxdb": {
                 "host": "localhost",
-            "port": 8086,
+            "port": 8181,
                 "org": "org",
                 "bucket": "bucket",
             },
@@ -243,7 +243,7 @@ class TestCLIConfigValidation:
             "mqtt": {"host": "localhost", "port": 1883},
             "influxdb": {
                 "host": "localhost",
-            "port": 8086,
+            "port": 8181,
                 "token": "token",
                 "org": "org",
                 "bucket": "bucket",

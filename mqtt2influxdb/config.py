@@ -86,7 +86,7 @@ class InfluxDBConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     host: str = Field(..., min_length=1, description="InfluxDB hostname")
-    port: int = Field(default=8086, ge=0, le=65535, description="InfluxDB port")
+    port: int = Field(default=8181, ge=0, le=65535, description="InfluxDB port")
     token: str = Field(..., min_length=1, description="API token")
     org: str = Field(..., min_length=1, description="Organization name")
     bucket: str = Field(..., min_length=1, description="Default bucket name")
