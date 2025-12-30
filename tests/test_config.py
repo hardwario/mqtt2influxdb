@@ -201,12 +201,13 @@ class TestPointConfig:
         config = PointConfig(
             measurement="temperature",
             topic="test/+/temperature",
+            fields={"value": "$.payload"},
         )
         assert config.measurement == "temperature"
         assert config.topic == "test/+/temperature"
         assert config.bucket is None
         assert config.schedule is None
-        assert config.fields == {}
+        assert config.fields == {"value": "$.payload"}
         assert config.tags == {}
 
     def test_full_config(self):
@@ -240,6 +241,7 @@ class TestPointConfig:
                 measurement="test",
                 topic="test",
                 schedule=schedule,
+                fields={"value": "$.payload"},
             )
             assert config.schedule == schedule
 
@@ -250,6 +252,7 @@ class TestPointConfig:
                 measurement="test",
                 topic="test",
                 schedule="invalid",
+                fields={"value": "$.payload"},
             )
         assert "cron" in str(exc_info.value).lower()
 
@@ -258,6 +261,7 @@ class TestPointConfig:
         config = PointConfig(
             measurement="$.payload.type",
             topic="test",
+            fields={"value": "$.payload"},
         )
         assert config.measurement == "$.payload.type"
 
@@ -267,6 +271,7 @@ class TestPointConfig:
             PointConfig(
                 measurement="$.invalid[",
                 topic="test",
+                fields={"value": "$.payload"},
             )
         assert "JSONPath" in str(exc_info.value)
 

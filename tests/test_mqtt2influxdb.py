@@ -464,7 +464,7 @@ class TestMqttCallbacks:
 
         bridge._on_mqtt_connect(mock_client, None, None, mock_reason_code, None)
 
-        mock_client.subscribe.assert_called_once_with("test/+/temperature")
+        mock_client.subscribe.assert_called_once_with("test/+/temperature", qos=0)
 
     def test_on_connect_failure(self, minimal_config, mock_influxdb, mock_mqtt, caplog):
         """Test on_connect handles connection failure."""

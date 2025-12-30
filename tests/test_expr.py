@@ -24,9 +24,9 @@ class TestJsonpathToVariable:
         assert result == "JSON__payload_temperature"
 
     def test_topic_index(self):
-        """Test topic index conversion."""
+        """Test topic index conversion (brackets converted to underscores)."""
         result = jsonpath_to_variable("$.topic[1]")
-        assert result == "JSON__topic[1]"
+        assert result == "JSON__topic_1_"
 
     def test_deeply_nested(self):
         """Test deeply nested path."""

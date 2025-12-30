@@ -3,6 +3,8 @@
 import base64
 import json
 import logging
+import signal
+import sys
 from datetime import datetime, timezone
 
 import jsonpath_ng
@@ -11,9 +13,14 @@ import pycron
 import requests
 from influxdb_client_3 import InfluxDBClient3, Point
 from requests.auth import HTTPBasicAuth
+from requests.exceptions import RequestException
 
 from .config import Config, FieldConfig
 from .expr import variable_to_jsonpath
+
+# Constants
+HTTP_TIMEOUT = 10  # seconds
+MAX_BASE64_SIZE = 1024 * 1024  # 1MB limit for base64 decoded data
 
 
 class Mqtt2InfluxDB:
@@ -22,6 +29,7 @@ class Mqtt2InfluxDB:
     def __init__(self, config: Config) -> None:
         self._config = config
         self._points = config.points
+        self._running = False
 
         # Initialize InfluxDB v3 client
         influxdb_host = f"{config.influxdb.host}:{config.influxdb.port}"
@@ -55,6 +63,12 @@ class Mqtt2InfluxDB:
 
     def run(self) -> None:
         """Start the MQTT to InfluxDB bridge."""
+        self._running = True
+
+        # Set up signal handlers for graceful shutdown
+        signal.signal(signal.SIGTERM, self._signal_handler)
+        signal.signal(signal.SIGINT, self._signal_handler)
+
         logging.info(
             "Connecting to MQTT broker %s:%d (TLS: %s)",
             self._config.mqtt.host,
@@ -69,6 +83,24 @@ class Mqtt2InfluxDB:
         )
         self._mqtt.loop_forever()
 
+    def _signal_handler(self, signum, frame) -> None:
+        """Handle shutdown signals gracefully."""
+        sig_name = signal.Signals(signum).name
+        logging.info("Received %s signal, shutting down...", sig_name)
+        self.stop()
+
+    def stop(self) -> None:
+        """Stop the bridge and clean up resources."""
+        if not self._running:
+            return
+        self._running = False
+        logging.info("Stopping MQTT client...")
+        self._mqtt.disconnect()
+        self._mqtt.loop_stop()
+        logging.info("Closing InfluxDB client...")
+        self._influxdb.close()
+        logging.info("Shutdown complete")
+
     def _on_mqtt_connect(
         self, client, userdata, flags, reason_code, properties
     ) -> None:
@@ -80,8 +112,9 @@ class Mqtt2InfluxDB:
             return
 
         for point in self._points:
-            logging.info("Subscribing to: %s", point.topic)
-            client.subscribe(point.topic)
+            qos = point.qos
+            logging.info("Subscribing to: %s (QoS: %d)", point.topic, qos)
+            client.subscribe(point.topic, qos=qos)
 
     def _on_mqtt_disconnect(
         self, client, userdata, flags, reason_code, properties
@@ -91,7 +124,12 @@ class Mqtt2InfluxDB:
 
     def _on_mqtt_message(self, client, userdata, message) -> None:
         """Process incoming MQTT message."""
-        logging.debug("Message: %s %s", message.topic, message.payload)
+        # Log topic and payload size (not content) to avoid exposing sensitive data
+        logging.debug(
+            "Message received: topic=%s, payload_size=%d bytes",
+            message.topic,
+            len(message.payload),
+        )
 
         msg = None
 
@@ -120,36 +158,46 @@ class Mqtt2InfluxDB:
     def _parse_message(self, message) -> dict | None:
         """Parse MQTT message into structured format.
 
-        Supports both JSON and raw string payloads. If JSON parsing fails,
-        the raw string is used as the payload value.
+        Supports JSON, raw string, and binary payloads. If JSON parsing fails,
+        the raw string is used. For binary payloads (non-UTF-8), hex encoding
+        is provided.
         """
-        try:
-            payload = message.payload.decode("utf-8")
-        except UnicodeDecodeError as e:
-            logging.error(
-                "Failed to decode payload: %s topic: %s",
-                e,
-                message.topic,
-            )
-            return None
+        payload = None
+        payload_binary = None
 
-        # Try to parse as JSON, fall back to raw string
-        if payload == "":
-            payload = None
-        else:
-            try:
-                payload = json.loads(payload)
-            except json.JSONDecodeError:
-                # Keep payload as raw string if not valid JSON
-                logging.debug(
-                    "Payload is not JSON, using raw string: topic=%s",
-                    message.topic,
-                )
-                pass
+        # Try to decode as UTF-8 first
+        try:
+            payload_str = message.payload.decode("utf-8")
+            # Try to parse as JSON, fall back to raw string
+            if payload_str == "":
+                payload = None
+            else:
+                try:
+                    payload = json.loads(payload_str)
+                except json.JSONDecodeError:
+                    # Keep payload as raw string if not valid JSON
+                    logging.debug(
+                        "Payload is not JSON, using raw string: topic=%s",
+                        message.topic,
+                    )
+                    payload = payload_str
+        except UnicodeDecodeError:
+            # Binary payload - provide hex encoding
+            logging.debug(
+                "Binary payload detected (non-UTF-8): topic=%s, size=%d bytes",
+                message.topic,
+                len(message.payload),
+            )
+            payload_binary = {
+                "raw": message.payload,
+                "hex": message.payload.hex(),
+                "size": len(message.payload),
+            }
 
         msg = {
             "topic": message.topic.split("/"),
             "payload": payload,
+            "payload_binary": payload_binary,
             "timestamp": getattr(message, "timestamp", None),
             "qos": message.qos,
         }
@@ -161,14 +209,31 @@ class Mqtt2InfluxDB:
                 matches = source_path.find(msg)
                 if matches:
                     data = matches[0].value
-                    decoded = base64.b64decode(data)
-                    target = self._config.base64decode.target
-                    msg["base64decoded"] = {
-                        target: {
-                            "raw": decoded,
-                            "hex": decoded.hex(),
-                        }
-                    }
+                    # Check size limit before decoding
+                    if len(data) > MAX_BASE64_SIZE:
+                        logging.warning(
+                            "Base64 data exceeds size limit (%d bytes > %d bytes)",
+                            len(data),
+                            MAX_BASE64_SIZE,
+                        )
+                    else:
+                        decoded = base64.b64decode(data)
+                        # Also check decoded size
+                        if len(decoded) > MAX_BASE64_SIZE:
+                            logging.warning(
+                                "Decoded base64 data exceeds size limit (%d bytes)",
+                                len(decoded),
+                            )
+                        else:
+                            target = self._config.base64decode.target
+                            msg["base64decoded"] = {
+                                target: {
+                                    "raw": decoded,
+                                    "hex": decoded.hex(),
+                                }
+                            }
+            except base64.binascii.Error as e:
+                logging.warning("Base64 decode failed (invalid data): %s", e)
             except Exception as e:
                 logging.warning("Base64 decode failed: %s", e)
 
@@ -226,8 +291,18 @@ class Mqtt2InfluxDB:
             bucket = point_config.bucket or self._config.influxdb.bucket
             self._influxdb.write(point, database=bucket)
             logging.debug("Wrote point to InfluxDB: %s", measurement)
+        except ConnectionError as e:
+            logging.error(
+                "Failed to write to InfluxDB (connection error): %s", e
+            )
+        except TimeoutError as e:
+            logging.error("Failed to write to InfluxDB (timeout): %s", e)
         except Exception as e:
-            logging.error("Failed to write to InfluxDB: %s", e)
+            logging.error(
+                "Failed to write to InfluxDB: %s: %s",
+                type(e).__name__,
+                e,
+            )
 
         # HTTP forwarding
         if self._config.http and point_config.httpcontent:
@@ -279,7 +354,11 @@ class Mqtt2InfluxDB:
         return spec
 
     def _get_timestamp(self, msg: dict) -> datetime:
-        """Get timestamp from message or current time."""
+        """Get timestamp from message payload or current time.
+
+        Looks for a 'timestamp' field in the payload (Unix timestamp).
+        Falls back to current time if not found or invalid.
+        """
         payload = msg.get("payload", {})
         if isinstance(payload, dict) and "timestamp" in payload:
             try:
@@ -287,8 +366,13 @@ class Mqtt2InfluxDB:
                     payload["timestamp"],
                     tz=timezone.utc,
                 )
-            except Exception:
-                pass
+            except (TypeError, ValueError, OSError) as e:
+                logging.debug(
+                    "Invalid timestamp in payload (%s), using current time",
+                    e,
+                )
+        else:
+            logging.debug("No timestamp in payload, using current time")
         return datetime.now(tz=timezone.utc)
 
     def _convert_type(self, value, type_name: str):
@@ -321,16 +405,44 @@ class Mqtt2InfluxDB:
         if not http_data:
             return
 
+        http_config = self._config.http
+        # Method is validated at config time, so this should always succeed
+        method = getattr(requests, http_config.action.lower())
+
+        auth = None
+        if http_config.username:
+            auth = HTTPBasicAuth(http_config.username, http_config.password)
+
         try:
-            http_config = self._config.http
-            method = getattr(requests, http_config.action.lower(), None)
-            if method:
-                auth = None
-                if http_config.username:
-                    auth = HTTPBasicAuth(http_config.username, http_config.password)
-                method(url=http_config.destination, data=http_data, auth=auth)
-                logging.debug("HTTP forward to %s", http_config.destination)
-            else:
-                logging.error("Invalid HTTP method: %s", http_config.action)
-        except Exception as e:
-            logging.error("HTTP forward failed: %s", e)
+            response = method(
+                url=http_config.destination,
+                data=http_data,
+                auth=auth,
+                timeout=HTTP_TIMEOUT,
+            )
+            response.raise_for_status()
+            logging.debug(
+                "HTTP forward to %s (status: %d)",
+                http_config.destination,
+                response.status_code,
+            )
+        except requests.Timeout:
+            logging.error(
+                "HTTP forward timeout after %ds: %s",
+                HTTP_TIMEOUT,
+                http_config.destination,
+            )
+        except requests.ConnectionError as e:
+            logging.error(
+                "HTTP forward connection error: %s: %s",
+                http_config.destination,
+                e,
+            )
+        except requests.HTTPError as e:
+            logging.error(
+                "HTTP forward failed (status %d): %s",
+                e.response.status_code if e.response else 0,
+                http_config.destination,
+            )
+        except RequestException as e:
+            logging.error("HTTP forward failed: %s: %s", type(e).__name__, e)
