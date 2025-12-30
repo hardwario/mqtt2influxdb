@@ -33,6 +33,13 @@ jobs:
             exit 1
           fi
 
+          # Check uv.lock
+          LOCK_VERSION=$(grep -A1 'name = "mqtt2influxdb"' uv.lock | grep 'version' | sed 's/version = "\(.*\)"/\1/')
+          if [ "$LOCK_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Version mismatch: uv.lock has $LOCK_VERSION but tag is $TAG_VERSION (run 'uv sync')"
+            exit 1
+          fi
+
           echo "Version verified: $TAG_VERSION"
 
       - name: Install uv
