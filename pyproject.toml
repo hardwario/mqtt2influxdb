@@ -1,7 +1,7 @@
 [project]
 name = "mqtt2influxdb"
-version = "2.0.1"
-description = "MQTT to InfluxDB v3 bridge for IoT applications"
+version = "2.0.2"
+description = "MQTT to InfluxDB v3 bridge with flexible JSONPath transformation"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
