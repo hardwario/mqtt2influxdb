@@ -59,7 +59,7 @@ mqtt:
 
 influxdb:
   host: localhost
-  port: 8086
+  port: 8181
   token: your-api-token
   org: your-organization
   bucket: your-bucket
@@ -118,7 +118,7 @@ mqtt:
 ```yaml
 influxdb:
   host: localhost          # InfluxDB hostname
-  port: 8086               # InfluxDB port
+  port: 8181               # InfluxDB port
   token: your-api-token    # API token
   org: your-organization   # Organization name
   bucket: your-bucket      # Default bucket
@@ -184,14 +184,14 @@ Raw strings are useful for simple MQTT messages like Tasmota power states (`ON`/
 - `$.payload.temperature` - Nested field (JSON only)
 - `$.payload.data[0]` - Array index (JSON only)
 - `$.topic[n]` - Topic segment (0-indexed)
-- `$.payload['PM2.5']` - Field with special characters (dot, space, etc.)
+- `$.payload['pm2.5']` - Field with special characters (dot, space, etc.)
 
 **Special Characters:** Use bracket notation with quotes for field names containing dots, spaces, or other reserved characters:
 
 ```yaml
-# For payload: {"VINDRIKTNING": {"PM2.5": 5}}
+# For payload: {"air_quality_sensor": {"pm2.5": 5}}
 fields:
-  pm25: $.payload.VINDRIKTNING['PM2.5']
+  pm25: $.payload.air_quality_sensor['pm2.5']
 ```
 
 ### Environment Variables
@@ -207,7 +207,7 @@ mqtt:
 
 influxdb:
   host: ${MQTT2INFLUXDB_INFLUXDB_HOST:localhost}
-  port: ${MQTT2INFLUXDB_INFLUXDB_PORT:8086}
+  port: ${MQTT2INFLUXDB_INFLUXDB_PORT:8181}
   token: ${MQTT2INFLUXDB_INFLUXDB_TOKEN}
   org: ${MQTT2INFLUXDB_INFLUXDB_ORG:default}
   bucket: ${MQTT2INFLUXDB_INFLUXDB_BUCKET:metrics}
